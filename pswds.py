@@ -1,15 +1,33 @@
 import os
 from cryptography.fernet import Fernet
 import shutil
-print("All notes must be in Plain ASCII")
+print("If PIN.dll is deleted key.dll will be deleted rendering all passwords useless. Do not delete key.dll or PIN.dll")
 
 key = "KEY"
+
+class checkrunvars:
+  keyexists = False
+  pinexists = False
+  datexists = False
+crv = checkrunvars()
+crv.keyexists = os.path.exists(".dat/key.dll")
+crv.pinexists = os.path.exists(".dat/PIN.dll")
+crv.datexists = os.path.isdir(".dat")
+
+if crv.keyexists == True and crv.pinexists == False and crv.datexists == True:
+  print("PIN.dll is missing. Deleting key.dll and all saved passwords.")
+  shutil.rmtree(".dat")
+elif crv.keyexists == False and crv.pinexists == True and crv.datexists == True:
+  print("key.dll is missing. Deleting PIN.dll and all saved passwords.")
+  shutil.rmtree(".dat")
 
 class tmpvars:
   tmp = "IMAPASSWORD"
   pswdtmp = "IMAPASSWORDTOO"
   notestmp = "IMSOMENOTES"
   filetmp = "IMAFILEPATH"
+  pinsuccess = False
+  pinsavednow = False
 
 tv = tmpvars()
 
@@ -35,10 +53,12 @@ if os.path.exists(".dat/PIN.dll"):
 else:
   with open(".dat/PIN.dll", "w") as PIN:
     PIN.write(input("Set PIN (Permanant) If entered incorrectly too many times all passwords are deleted : "))
+    print("Generating PIN.dll")
+    tv.pinsavednow = True
   with open(".dat/PIN.dll", "r") as PIN:
     pin = PIN.read()
 
-def exmp():
+def example():
   message = b"Top secret data"
   cipher_text = EDK.encrypt(message)
   print(f"Encrypted: {cipher_text}")
@@ -69,6 +89,8 @@ def findpswds():
   print(pswds)
 
 def viewpswd(file):
+  if file == "":
+    return
   with open(f".dat/DAT/{file}.PDAT", "rb") as PDAT:
     pswd = EDK.decrypt(PDAT.read())
     print(pswd.decode())
@@ -78,29 +100,52 @@ def viewpswd(file):
 
 def main():
   while True:
-    if input("Add password? (y/n) ") == "y":
+    whattodo = input("What do you want to do? (a/v/r): ")
+    if whattodo == "a":
       tv.pswdtmp = str.encode(input("Password "))
       tv.notestmp = str.encode(input("Notes "))
       tv.filetmp = getfile()
       addpswd(tv.pswdtmp, tv.notestmp, tv.filetmp)
-    else:
-      findpswds()
-      viewpswd(input("File Name of password to view: "))
-      
-      
+    elif whattodo == "v":
+      checkpin()
+      if tv.pinsuccess == True:
+        findpswds()
+        viewpswd(input("File Name of password to view: "))
+      else:
+        return  
+    elif whattodo == "r":
+      checkpin()
+      if tv.pinsuccess == True:
+        findpswds()
+        pswdtodelete = input("File name to delete : ")
+        os.remove(f".dat/DAT/{pswdtodelete}.PDAT")
+        os.remove(f".dat/DAT_OLD/{pswdtodelete}.NDAT_OLD")
+      elif tv.pinsuccess == False:
+        return
+
 
 def checkpin():
   with open(".dat/PIN.dll", "r") as PIN:
     saved_pin = PIN.read().strip()
   attempts = 0
   while attempts < 3:
-    entry = input("Enter PIN: ").strip()
-    if entry == saved_pin:
-      main()
+    pin = input("Enter PIN: ").strip()
+    if pin == saved_pin:
+      tv.pinsuccess = True
       return
     attempts += 1
     print("Incorrect PIN")
-  print("Too many incorrect attempts. Deleting saved passwords.")
+    tv.pinsuccess = False
+  print("Too many incorrect attempts. Deleting all saved passwords.")
   shutil.rmtree(".dat")
+  tv.pinsuccess = False
 
-checkpin()
+def init():
+  if tv.pinsavednow == True:
+    main()
+  else:
+    checkpin()
+    if tv.pinsuccess == True:
+      main()   
+
+init()
